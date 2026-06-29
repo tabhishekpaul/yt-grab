@@ -1,0 +1,26 @@
+{
+  "name": "yt-grab",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "description": "Cross-platform video/audio downloader GUI built with Tauri 2 and yt-dlp",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview",
+    "fetch:ytdlp": "node scripts/fetch-ytdlp.mjs",
+    "tauri": "tauri"
+  },
+  "dependencies": {
+    "@tauri-apps/api": "^2.1.1",
+    "@tauri-apps/plugin-dialog": "^2.2.0",
+    "@tauri-apps/plugin-opener": "^2.2.5",
+    "@tauri-apps/plugin-store": "^2.2.0",
+    "@tauri-apps/plugin-notification": "^2.2.0"
+  },
+  "devDependencies": {
+    "@tauri-apps/cli": "^2.1.0",
+    "esbuild": "^0.28.1",
+    "vite": "^8.1.0"
+  }
+}

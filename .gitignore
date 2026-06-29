@@ -1,0 +1,16 @@
+# dependencies / build output
+node_modules/
+dist/
+src-tauri/target/
+src-tauri/gen/
+
+# yt-dlp engine (onedir zip) is fetched at build time per-target
+src-tauri/binaries/
+src-tauri/engine/
+
+# generated icon source
+icon-source.png
+
+# misc
+.DS_Store
+*.log

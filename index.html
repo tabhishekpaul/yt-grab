@@ -1,0 +1,660 @@
+<!doctype html>
+<html lang="en" data-theme="system">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>YT Grab</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700;800&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="/src/styles.css" />
+  </head>
+  <body>
+    <!-- Atmospheric mesh gradient background -->
+    <div class="mesh">
+      <span class="mesh-blob mesh-beige"></span>
+      <span class="mesh-lilac"></span>
+      <span class="mesh-blue"></span>
+    </div>
+
+    <!-- ============ TOP APP BAR (full width) ============ -->
+    <header class="appbar">
+      <div class="appbar-inner">
+        <button class="appbar-brand" data-nav="download" aria-label="Home">
+          <span class="appbar-logo">▼</span>
+          <span class="appbar-name">YT Grab</span>
+        </button>
+        <div class="appbar-actions">
+          <button class="appbar-btn" data-nav="downloads" id="nav-downloads">
+            <span class="appbar-ic">⬇</span>
+            <span class="appbar-text">Downloads</span>
+            <span class="count-pill hidden" id="dl-count">0</span>
+          </button>
+          <button
+            class="appbar-btn appbar-btn--icon"
+            data-nav="settings"
+            id="nav-settings"
+            aria-label="Settings"
+          >
+            <span class="appbar-ic">⚙</span>
+          </button>
+        </div>
+      </div>
+    </header>
+
+    <div id="app">
+      <!-- ============ DOWNLOAD VIEW ============ -->
+      <section class="view" id="view-download" data-view="download">
+        <header class="screen-head">
+          <h1 class="h1">
+            Grab any<br /><span class="h1-accent">video or audio.</span>
+          </h1>
+          <p class="screen-sub">
+            Paste a link, pick a preset, and download. Made with ❤️ by Abhishek
+            Paul Thotakura.
+          </p>
+        </header>
+
+        <!-- URL card (always) -->
+        <div class="surface">
+          <label class="label" for="url">Source URL</label>
+          <input
+            id="url"
+            type="text"
+            class="input"
+            placeholder="Paste one or more links (space/newline separated)"
+            autocomplete="off"
+            spellcheck="false"
+          />
+          <div id="meta" class="meta hidden">
+            <img id="meta-thumb" class="meta-thumb" alt="thumbnail" />
+            <div class="meta-info">
+              <div id="meta-title" class="meta-title"></div>
+              <div id="meta-sub" class="meta-sub"></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Normal / Advanced tabs -->
+        <div class="tabs" id="dq-tabs">
+          <button class="tab active" data-q="normal">Normal</button>
+          <button class="tab" data-q="advanced">Advanced</button>
+        </div>
+
+        <!-- NORMAL pane: presets -->
+        <div class="surface" data-qpane="normal">
+          <div class="surface-head">
+            <h2 class="h2">Presets</h2>
+            <span class="muted-sm">Tap to apply</span>
+          </div>
+          <div id="presets" class="presets"></div>
+        </div>
+
+        <!-- ADVANCED pane -->
+        <div class="surface hidden" data-qpane="advanced">
+          <div class="seg" id="scope-seg">
+            <button class="seg-btn active" data-scope="download">
+              This download
+            </button>
+            <button class="seg-btn" data-scope="global">Global defaults</button>
+          </div>
+          <p class="muted-sm" id="scope-hint" style="margin: 10px 10px 18px">
+            Tweaks apply to the next download only.
+          </p>
+
+          <!-- Format & Quality -->
+          <div class="adv-group">
+            <div class="adv-h">Format &amp; quality</div>
+            <div class="grid">
+              <div class="field">
+                <label class="label" for="opt-mode">Mode</label>
+                <select id="opt-mode" class="input">
+                  <option value="video">Video + audio</option>
+                  <option value="audio">Audio only</option>
+                </select>
+              </div>
+              <div class="field" data-mode="video">
+                <label class="label" for="opt-quality">Max video quality</label>
+                <select id="opt-quality" class="input">
+                  <option value="0">Best available</option>
+                  <option value="2160">4K (2160p)</option>
+                  <option value="1440">1440p</option>
+                  <option value="1080">1080p</option>
+                  <option value="720">720p</option>
+                  <option value="480">480p</option>
+                  <option value="360">360p</option>
+                </select>
+              </div>
+              <div class="field" data-mode="video">
+                <label class="label" for="opt-container">Container</label>
+                <select id="opt-container" class="input">
+                  <option value="mp4">mp4</option>
+                  <option value="mkv">mkv</option>
+                  <option value="webm">webm</option>
+                  <option value="">(no remux)</option>
+                </select>
+              </div>
+              <div class="field" data-mode="video">
+                <label class="label" for="opt-codec">Prefer codec</label>
+                <select id="opt-codec" class="input">
+                  <option value="">Auto</option>
+                  <option value="avc1">H.264 (most compatible)</option>
+                  <option value="vp9">VP9</option>
+                  <option value="av01">AV1 (smallest)</option>
+                </select>
+              </div>
+              <div class="field" data-mode="audio">
+                <label class="label" for="opt-audio-format">Audio format</label>
+                <select id="opt-audio-format" class="input">
+                  <option value="mp3">mp3</option>
+                  <option value="m4a">m4a</option>
+                  <option value="opus">opus</option>
+                  <option value="flac">flac</option>
+                  <option value="wav">wav</option>
+                  <option value="best">best (no convert)</option>
+                </select>
+              </div>
+              <div class="field" data-mode="audio">
+                <label class="label" for="opt-audio-quality"
+                  >Audio quality</label
+                >
+                <select id="opt-audio-quality" class="input">
+                  <option value="0">Best (VBR ~0)</option>
+                  <option value="2">High (~190k)</option>
+                  <option value="5">Medium (~130k)</option>
+                  <option value="9">Low (~64k)</option>
+                </select>
+              </div>
+              <div class="field field--wide per-video" data-mode="video">
+                <label class="label" for="opt-format"
+                  >Specific format (after fetch)</label
+                >
+                <select id="opt-format" class="input">
+                  <option value="">Auto — use quality above</option>
+                </select>
+              </div>
+            </div>
+            <label class="switch" data-mode="video"
+              ><input type="checkbox" id="opt-fps" /><span class="sl"></span>
+              Prefer 60fps</label
+            >
+          </div>
+
+          <!-- Trim (per-video) -->
+          <div class="adv-group per-video">
+            <div class="adv-h">Trim</div>
+            <label class="switch"
+              ><input type="checkbox" id="opt-trim" /><span class="sl"></span>
+              Enable trim</label
+            >
+            <div id="trim-controls" class="trim hidden">
+              <div class="rangeslider" id="trim-slider">
+                <div class="rs-track">
+                  <div class="rs-fill" id="rs-fill"></div>
+                </div>
+                <input
+                  type="range"
+                  id="rs-start"
+                  min="0"
+                  max="100"
+                  step="1"
+                  value="0"
+                />
+                <input
+                  type="range"
+                  id="rs-end"
+                  min="0"
+                  max="100"
+                  step="1"
+                  value="100"
+                />
+              </div>
+              <div class="input-row trim-fields">
+                <input
+                  id="opt-clip-start"
+                  type="text"
+                  class="input"
+                  placeholder="0:00"
+                  spellcheck="false"
+                />
+                <span class="trim-to">to</span>
+                <input
+                  id="opt-clip-end"
+                  type="text"
+                  class="input"
+                  placeholder="end"
+                  spellcheck="false"
+                />
+              </div>
+              <p class="muted-sm" id="trim-hint">
+                Fetch a single video to scrub the timeline.
+              </p>
+            </div>
+            <label class="switch"
+              ><input type="checkbox" id="opt-split" /><span class="sl"></span>
+              Split into chapters</label
+            >
+          </div>
+
+          <!-- Subtitles & metadata -->
+          <div class="adv-group">
+            <div class="adv-h">Subtitles &amp; metadata</div>
+            <div class="switches">
+              <label class="switch"
+                ><input type="checkbox" id="opt-subs" /><span class="sl"></span>
+                Subtitles</label
+              >
+              <label class="switch"
+                ><input type="checkbox" id="opt-autosubs" /><span
+                  class="sl"
+                ></span>
+                Auto subtitles</label
+              >
+              <label class="switch"
+                ><input type="checkbox" id="opt-thumbnail" checked /><span
+                  class="sl"
+                ></span>
+                Embed thumbnail</label
+              >
+              <label class="switch"
+                ><input type="checkbox" id="opt-metadata" checked /><span
+                  class="sl"
+                ></span>
+                Embed metadata</label
+              >
+              <label class="switch"
+                ><input type="checkbox" id="opt-chapters" /><span
+                  class="sl"
+                ></span>
+                Embed chapters</label
+              >
+              <label class="switch"
+                ><input type="checkbox" id="opt-sponsorblock" /><span
+                  class="sl"
+                ></span>
+                SponsorBlock</label
+              >
+            </div>
+            <div class="field field--wide" style="margin-top: 14px">
+              <label class="label" for="opt-subslang">Subtitle languages</label>
+              <input
+                id="opt-subslang"
+                type="text"
+                class="input"
+                value="en"
+                spellcheck="false"
+              />
+            </div>
+          </div>
+
+          <!-- Playlist -->
+          <div class="adv-group">
+            <div class="adv-h">Playlist</div>
+            <div class="switches">
+              <label class="switch"
+                ><input type="checkbox" id="opt-playlist" /><span
+                  class="sl"
+                ></span>
+                Whole playlist</label
+              >
+              <label class="switch"
+                ><input type="checkbox" id="opt-archive" /><span
+                  class="sl"
+                ></span>
+                Skip already-downloaded</label
+              >
+            </div>
+            <div class="field field--wide per-video" style="margin-top: 14px">
+              <label class="label" for="opt-plitems"
+                >Items (e.g. 1-5,8,10-)</label
+              >
+              <input
+                id="opt-plitems"
+                type="text"
+                class="input"
+                placeholder="all items"
+                spellcheck="false"
+              />
+            </div>
+          </div>
+
+          <!-- Network & output -->
+          <div class="adv-group">
+            <div class="adv-h">Network &amp; output</div>
+            <div class="grid">
+              <div class="field field--wide">
+                <label class="label" for="opt-outdir">Output folder</label>
+                <div class="input-row">
+                  <input
+                    id="opt-outdir"
+                    type="text"
+                    class="input"
+                    placeholder="Default: Downloads"
+                    readonly
+                  />
+                  <button id="btn-browse" class="chip">Browse…</button>
+                </div>
+              </div>
+              <div class="field field--wide">
+                <label class="label" for="opt-template"
+                  >Filename template</label
+                >
+                <input
+                  id="opt-template"
+                  type="text"
+                  class="input"
+                  value="%(title)s.%(ext)s"
+                  spellcheck="false"
+                />
+                <p class="muted-sm" style="margin-top: 6px">
+                  yt-dlp tokens, e.g. %(title)s · %(id)s · %(ext)s ·
+                  %(uploader)s
+                </p>
+              </div>
+              <div class="field">
+                <label class="label" for="opt-ratelimit"
+                  >Rate limit (e.g. 5M)</label
+                >
+                <input
+                  id="opt-ratelimit"
+                  type="text"
+                  class="input"
+                  placeholder="unlimited"
+                  spellcheck="false"
+                />
+              </div>
+              <div class="field">
+                <label class="label" for="opt-fragments"
+                  >Concurrent fragments</label
+                >
+                <select id="opt-fragments" class="input">
+                  <option value="1">1 (default)</option>
+                  <option value="2">2</option>
+                  <option value="4">4</option>
+                  <option value="8">8</option>
+                  <option value="16">16 (fastest)</option>
+                </select>
+              </div>
+            </div>
+            <div class="switches" style="margin-top: 14px">
+              <label class="switch"
+                ><input type="checkbox" id="opt-ipv4" /><span class="sl"></span>
+                Force IPv4</label
+              >
+              <label class="switch"
+                ><input type="checkbox" id="opt-bypass" /><span
+                  class="sl"
+                ></span>
+                Bypass throttling (Android)</label
+              >
+            </div>
+            <div class="field field--wide" style="margin-top: 14px">
+              <label class="label" for="opt-extra"
+                >Extra yt-dlp arguments</label
+              >
+              <input
+                id="opt-extra"
+                type="text"
+                class="input"
+                placeholder="e.g. --no-mtime"
+                spellcheck="false"
+              />
+            </div>
+          </div>
+
+          <!-- Actions -->
+          <div class="adv-actions">
+            <div class="input-row">
+              <input
+                id="preset-name"
+                type="text"
+                class="input"
+                placeholder="New preset name…"
+                spellcheck="false"
+              />
+              <button id="btn-save-preset" class="chip chip--solid">
+                Save as preset
+              </button>
+            </div>
+            <button id="btn-reset-global" class="chip">
+              Reset to global defaults
+            </button>
+          </div>
+        </div>
+
+        <button id="btn-download" class="btn-primary" disabled>Download</button>
+      </section>
+
+      <!-- ============ DOWNLOADS VIEW (tabs) ============ -->
+      <section class="view hidden" id="view-downloads" data-view="downloads">
+        <header class="screen-head">
+          <h1 class="h1">Downloads</h1>
+        </header>
+
+        <div class="tabs" id="dl-tabs">
+          <button class="tab active" data-tab="active">
+            Downloading <span class="tab-count" id="tab-active-count">0</span>
+          </button>
+          <button class="tab" data-tab="done">
+            Downloaded <span class="tab-count" id="tab-done-count">0</span>
+          </button>
+        </div>
+
+        <!-- Downloading pane -->
+        <div class="surface" data-pane="active">
+          <div id="jobs-active" class="jobs"></div>
+          <p id="active-empty" class="empty">No active downloads.</p>
+        </div>
+
+        <!-- Downloaded pane -->
+        <div class="surface hidden" data-pane="done">
+          <div class="surface-head">
+            <h2 class="h2">Completed</h2>
+            <button id="btn-clear" class="chip">Clear list</button>
+          </div>
+          <div id="jobs-done" class="jobs"></div>
+          <p id="done-empty" class="empty">Nothing downloaded yet.</p>
+        </div>
+      </section>
+
+      <!-- ============ SETTINGS VIEW ============ -->
+      <section class="view hidden" id="view-settings" data-view="settings">
+        <header class="screen-head">
+          <h1 class="h1">Settings</h1>
+        </header>
+
+        <div class="surface">
+          <h2 class="h2" style="margin-bottom: 16px">Appearance</h2>
+          <div class="seg" id="theme-seg">
+            <button class="seg-btn" data-theme-choice="system">System</button>
+            <button class="seg-btn" data-theme-choice="light">Light</button>
+            <button class="seg-btn" data-theme-choice="dark">Dark</button>
+          </div>
+        </div>
+
+        <div class="surface">
+          <h2 class="h2" style="margin-bottom: 16px">Dependencies</h2>
+          <div class="list-row">
+            <span class="ic ic--green" id="ic-engine">↧</span>
+            <div class="list-text">
+              <div class="list-title">Download Engine</div>
+              <div class="list-sub" id="set-engine">Checking…</div>
+            </div>
+            <span class="status-dot" id="dot-engine"></span>
+          </div>
+          <div class="list-row">
+            <span class="ic ic--purple" id="ic-ffmpeg">♪</span>
+            <div class="list-text">
+              <div class="list-title">FFmpeg</div>
+              <div class="list-sub" id="set-ffmpeg">Checking…</div>
+            </div>
+            <span class="status-dot" id="dot-ffmpeg"></span>
+          </div>
+          <div
+            style="
+              display: flex;
+              align-items: center;
+              gap: 12px;
+              margin-top: 14px;
+            "
+          >
+            <button id="btn-update-engine" class="chip chip--solid">
+              Update engine
+            </button>
+            <span class="muted-sm" id="update-status"></span>
+          </div>
+          <p class="muted-sm" style="margin-top: 14px">
+            yt-dlp is bundled with the app (no install needed) and updates
+            itself to the latest release with the button above — handy since
+            YouTube changes break older versions. ffmpeg is required to merge HD
+            video with audio and to convert audio formats; install it via your
+            package manager if missing.
+          </p>
+        </div>
+
+        <div class="surface">
+          <h2 class="h2" style="margin-bottom: 16px">Default output folder</h2>
+          <div class="input-row">
+            <input
+              id="set-outdir"
+              type="text"
+              class="input"
+              placeholder="Downloads"
+              readonly
+            />
+            <button id="btn-browse-default" class="chip">Browse…</button>
+          </div>
+        </div>
+
+        <div class="surface">
+          <h2 class="h2" style="margin-bottom: 8px">Cookies</h2>
+          <p class="muted-sm" style="margin-bottom: 16px">
+            YT Grab keeps its own private cookie jar so YouTube sessions are
+            reused between fetches and downloads — no browser access. Reset it
+            if downloads start failing or to clear stored state.
+          </p>
+          <button id="btn-reset-cookies" class="chip">Reset cookies</button>
+        </div>
+
+        <div class="surface">
+          <div class="about">
+            <div class="ic ic--blue big">▼</div>
+            <div>
+              <div class="list-title">YT Grab</div>
+              <div class="list-sub">
+                Tauri 2.0 · Rust · macOS, Windows &amp; Linux
+              </div>
+              <div class="list-sub" style="margin-top: 6px">
+                Free &amp; open source · MIT License
+              </div>
+            </div>
+          </div>
+          <div class="dev-card">
+            <div class="dev-head">
+              <img id="dev-avatar" class="dev-avatar" alt="" />
+              <div>
+                <div class="list-title" style="font-size: 14px">Developer</div>
+                <div class="list-sub" id="dev-name" style="margin-top: 2px">
+                  Abhishek Paul Thotakura
+                </div>
+              </div>
+            </div>
+            <div class="about-links">
+              <button
+                class="chip icon-chip"
+                data-open="https://github.com/tabhishekpaul/yt-grab"
+              >
+                <svg
+                  viewBox="0 0 24 24"
+                  width="15"
+                  height="15"
+                  fill="currentColor"
+                >
+                  <path
+                    d="M9.4 16.6 4.8 12l4.6-4.6L8 6l-6 6 6 6 1.4-1.4zm5.2 0L19.2 12l-4.6-4.6L16 6l6 6-6 6-1.4-1.4z"
+                  />
+                </svg>
+                Source
+              </button>
+              <button
+                class="chip icon-chip"
+                data-open="https://github.com/tabhishekpaul"
+              >
+                <svg
+                  viewBox="0 0 24 24"
+                  width="15"
+                  height="15"
+                  fill="currentColor"
+                >
+                  <path
+                    d="M12 2C6.48 2 2 6.58 2 12.25c0 4.53 2.87 8.37 6.84 9.73.5.1.68-.22.68-.49 0-.24-.01-.88-.01-1.73-2.78.62-3.37-1.37-3.37-1.37-.46-1.18-1.11-1.49-1.11-1.49-.91-.64.07-.62.07-.62 1 .07 1.53 1.06 1.53 1.06.89 1.56 2.34 1.11 2.91.85.09-.66.35-1.11.63-1.37-2.22-.26-4.56-1.14-4.56-5.06 0-1.12.39-2.03 1.03-2.75-.1-.26-.45-1.3.1-2.71 0 0 .84-.27 2.75 1.05a9.3 9.3 0 0 1 5 0c1.91-1.32 2.75-1.05 2.75-1.05.55 1.41.2 2.45.1 2.71.64.72 1.03 1.63 1.03 2.75 0 3.93-2.34 4.8-4.57 5.05.36.32.68.94.68 1.9 0 1.37-.01 2.47-.01 2.81 0 .27.18.6.69.49A10.04 10.04 0 0 0 22 12.25C22 6.58 17.52 2 12 2z"
+                  />
+                </svg>
+                GitHub
+              </button>
+              <button class="chip icon-chip" data-open="https://t.me/abhixdeku">
+                <svg
+                  viewBox="0 0 24 24"
+                  width="15"
+                  height="15"
+                  fill="currentColor"
+                >
+                  <path
+                    d="M21.9 4.3 18.6 20c-.25 1.1-.9 1.37-1.83.85l-5-3.7-2.42 2.33c-.27.27-.5.5-1 .5l.36-5.1L17.9 6.2c.4-.36-.08-.56-.62-.2L6.3 13.1l-4.95-1.55c-1.08-.34-1.1-1.08.23-1.6L20.5 2.7c.9-.33 1.68.2 1.4 1.6z"
+                  />
+                </svg>
+                Telegram
+              </button>
+              <button
+                class="chip icon-chip"
+                data-open="https://instagram.com/abhixdeku"
+              >
+                <svg
+                  viewBox="0 0 24 24"
+                  width="15"
+                  height="15"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="2"
+                >
+                  <rect x="3" y="3" width="18" height="18" rx="5" />
+                  <circle cx="12" cy="12" r="4" />
+                  <circle
+                    cx="17.5"
+                    cy="6.5"
+                    r="1.2"
+                    fill="currentColor"
+                    stroke="none"
+                  />
+                </svg>
+                Instagram
+              </button>
+              <button
+                class="chip icon-chip"
+                data-open="mailto:tabhishekpaul@gmail.com"
+              >
+                <svg
+                  viewBox="0 0 24 24"
+                  width="15"
+                  height="15"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="2"
+                >
+                  <rect x="3" y="5" width="18" height="14" rx="2" />
+                  <path d="m3 7 9 6 9-6" />
+                </svg>
+                Contact
+              </button>
+            </div>
+          </div>
+        </div>
+      </section>
+    </div>
+
+    <script type="module" src="/src/main.js"></script>
+  </body>
+</html>
