@@ -129,16 +129,28 @@ fn engine_resource(app: &AppHandle) -> Result<(PathBuf, String), String> {
     candidates.push(PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("engine"));
 
     for dir in candidates {
-        let arc = dir.join("ytdlp-engine.txz");
-        if arc.is_file() {
-            let ver = std::fs::read_to_string(dir.join("ytdlp-engine.version"))
-                .unwrap_or_default()
-                .trim()
-                .to_string();
-            return Ok((arc, if ver.is_empty() { "v0".into() } else { ver }));
+        // tar.xz (macOS/Linux) or .zip (Windows) — whichever was bundled.
+        for name in ["ytdlp-engine.txz", "ytdlp-engine.zip"] {
+            let arc = dir.join(name);
+            if arc.is_file() {
+                let ver = std::fs::read_to_string(dir.join("ytdlp-engine.version"))
+                    .unwrap_or_default()
+                    .trim()
+                    .to_string();
+                return Ok((arc, if ver.is_empty() { "v0".into() } else { ver }));
+            }
         }
     }
     Err("Bundled yt-dlp engine not found.".into())
+}
+
+/// Extract a bundled engine archive (.txz or .zip) into `dest`.
+fn extract_archive(archive: &Path, dest: &Path) -> Result<(), String> {
+    if archive.extension().and_then(|e| e.to_str()) == Some("zip") {
+        extract_zip(archive, dest)
+    } else {
+        extract_engine(archive, dest)
+    }
 }
 
 /// The yt-dlp launcher inside an extracted onedir (the top-level file that is
@@ -211,7 +223,7 @@ fn ensure_engine(app: &AppHandle) -> Result<PathBuf, String> {
             }
         }
     }
-    let (txz, bundled_version) = engine_resource(app)?;
+    let (archive, bundled_version) = engine_resource(app)?;
     let root = engine_root(app)?;
 
     // Serialize so the eager-startup thread and a command don't race.
@@ -235,7 +247,7 @@ fn ensure_engine(app: &AppHandle) -> Result<PathBuf, String> {
     } else {
         let dest = root.join(&bundled_version);
         if !(find_engine_exe(&dest).is_some_and(|e| e.exists()) && dest.join(".complete").exists()) {
-            extract_engine(&txz, &dest)?;
+            extract_archive(&archive, &dest)?;
         }
         find_engine_exe(&dest)
             .ok_or_else(|| "engine launcher missing after extraction".to_string())?

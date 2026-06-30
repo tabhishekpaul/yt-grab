@@ -1,13 +1,14 @@
-// Builds the bundled engine: downloads the official yt-dlp *onedir* zip for the
-// current target, then repacks it as a high-compression tar.xz (~half the size
-// of the deflate zip) at:
-//   src-tauri/engine/ytdlp-engine.txz  (+ ytdlp-engine.version)
-//
-// The onedir is a small launcher + an `_internal/` runtime. The Rust side
-// extracts the tar.xz ONCE into the app-data dir and runs the launcher
-// directly — no per-run unpacking (~0.2s startup).
+// Builds the bundled engine from the official yt-dlp *onedir* for the current
+// target, placed at src-tauri/engine/ + a ytdlp-engine.version file:
+//   - Windows: the onedir .zip is bundled as-is (native, fast)  -> ytdlp-engine.zip
+//   - macOS / Linux: repacked as high-compression LZMA tar.xz   -> ytdlp-engine.txz
+// The Rust side extracts it ONCE into app-data and runs the launcher directly,
+// so there is no per-run unpacking (~0.2s startup).
 import { execSync } from "node:child_process";
-import { existsSync, mkdirSync, statSync, writeFileSync, readFileSync, rmSync, createWriteStream } from "node:fs";
+import {
+  existsSync, mkdirSync, statSync, writeFileSync, readFileSync,
+  rmSync, renameSync, copyFileSync, createWriteStream,
+} from "node:fs";
 import { dirname, join } from "node:path";
 import { tmpdir } from "node:os";
 import { fileURLToPath } from "node:url";
@@ -15,6 +16,7 @@ import { fileURLToPath } from "node:url";
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const engineDir = join(__dirname, "..", "src-tauri", "engine");
 const txzPath = join(engineDir, "ytdlp-engine.txz");
+const zipDest = join(engineDir, "ytdlp-engine.zip");
 const verPath = join(engineDir, "ytdlp-engine.version");
 
 function hostTriple() {
@@ -43,6 +45,8 @@ function assetFor(triple) {
 const triple = process.env.TAURI_ENV_TARGET_TRIPLE || hostTriple();
 const release = process.env.YTDLP_RELEASE || "latest";
 const asset = assetFor(triple);
+const isWindows = triple.includes("windows");
+const outPath = isWindows ? zipDest : txzPath; // the file we ultimately bundle
 
 async function resolveRelease() {
   const api =
@@ -77,9 +81,9 @@ async function download(url, dest) {
 
 const tag = await resolveRelease();
 
-if (existsSync(txzPath) && existsSync(verPath)) {
+if (existsSync(outPath) && existsSync(verPath)) {
   try {
-    if (readFileSync(verPath, "utf8").trim() === tag && statSync(txzPath).size > 1_000_000) {
+    if (readFileSync(verPath, "utf8").trim() === tag && statSync(outPath).size > 1_000_000) {
       console.log(`[fetch-ytdlp] cached: ${asset} @ ${tag}`);
       process.exit(0);
     }
@@ -89,27 +93,42 @@ if (existsSync(txzPath) && existsSync(verPath)) {
 mkdirSync(engineDir, { recursive: true });
 const work = join(tmpdir(), `ytgrab-engine-${process.pid}`);
 const zipFile = join(work, "engine.zip");
-const extractDir = join(work, "onedir");
 rmSync(work, { recursive: true, force: true });
-mkdirSync(extractDir, { recursive: true });
+mkdirSync(work, { recursive: true });
 
 const url = `https://github.com/yt-dlp/yt-dlp/releases/download/${tag}/${asset}`;
 console.log(`[fetch-ytdlp] target ${triple}`);
 console.log(`[fetch-ytdlp] downloading ${asset} @ ${tag}`);
 
+function q(p) { return `"${p}"`; }
+
 try {
   await download(url, zipFile);
-  // Extract the official zip. bsdtar (macOS/Windows) reads zip; Linux uses unzip.
-  console.log("[fetch-ytdlp] repacking as high-compression tar.xz…");
-  if (process.platform === "linux") {
-    execSync(`unzip -q -o "${zipFile}" -d "${extractDir}"`, { stdio: "inherit" });
+
+  if (isWindows) {
+    // Native: ship the onedir zip directly (no xz needed on Windows).
+    copyFileSync(zipFile, zipDest);
+    rmSync(txzPath, { force: true });
+    console.log(`[fetch-ytdlp] bundled zip: ${(statSync(zipDest).size / 1e6).toFixed(1)} MB`);
   } else {
-    execSync(`tar -xf "${zipFile}" -C "${extractDir}"`, { stdio: "inherit" });
+    // macOS / Linux: extract then repack as high-compression tar.xz.
+    console.log("[fetch-ytdlp] repacking as tar.xz…");
+    const extractDir = join(work, "onedir");
+    mkdirSync(extractDir, { recursive: true });
+    if (process.platform === "linux") {
+      execSync(`unzip -q -o ${q(zipFile)} -d ${q(extractDir)}`, { stdio: "inherit" });
+    } else {
+      execSync(`tar -xf ${q(zipFile)} -C ${q(extractDir)}`, { stdio: "inherit" }); // bsdtar reads zip
+    }
+    const tarFile = join(work, "engine.tar");
+    execSync(`tar -cf ${q(tarFile)} -C ${q(extractDir)} .`, { stdio: "inherit" });
+    execSync(`xz -9 -T0 -f ${q(tarFile)}`, { stdio: "inherit" }); // -> engine.tar.xz
+    renameSync(`${tarFile}.xz`, txzPath);
+    rmSync(zipDest, { force: true });
+    console.log(`[fetch-ytdlp] tar.xz: ${(statSync(txzPath).size / 1e6).toFixed(1)} MB`);
   }
-  // tar | xz -9 -> single compressed archive.
-  execSync(`tar -cf - -C "${extractDir}" . | xz -9 -T0 -c > "${txzPath}"`, { stdio: "inherit", shell: "/bin/sh" });
   writeFileSync(verPath, tag + "\n");
-  console.log(`[fetch-ytdlp] done: ${(statSync(txzPath).size / 1e6).toFixed(1)} MB -> ${txzPath}`);
+  console.log(`[fetch-ytdlp] done @ ${tag} -> ${outPath}`);
 } catch (e) {
   console.error(`[fetch-ytdlp] FAILED: ${e.message}`);
   process.exit(1);

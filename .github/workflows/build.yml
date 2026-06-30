@@ -17,21 +17,22 @@ jobs:
         include:
           - platform: macos-latest # Apple Silicon
             target: aarch64-apple-darwin
-            args: "--target aarch64-apple-darwin"
+            args: "--target aarch64-apple-darwin --bundles dmg"
           - platform: macos-latest # Intel
             target: x86_64-apple-darwin
-            args: "--target x86_64-apple-darwin"
+            args: "--target x86_64-apple-darwin --bundles dmg"
           - platform: ubuntu-22.04
             target: x86_64-unknown-linux-gnu
-            args: ""
+            args: "--bundles deb"
           - platform: windows-latest
             target: x86_64-pc-windows-msvc
-            args: ""
+            args: "--bundles msi"
 
     runs-on: ${{ matrix.platform }}
     steps:
       - uses: actions/checkout@v4
 
+      # Linux: Tauri/webkit deps + ffmpeg + engine repack tools (unzip, xz).
       - name: Install Linux dependencies
         if: matrix.platform == 'ubuntu-22.04'
         run: |
@@ -45,7 +46,14 @@ jobs:
             file \
             libxdo-dev \
             libssl-dev \
-            ffmpeg
+            ffmpeg \
+            unzip \
+            xz-utils
+
+      # macOS repacks the engine to tar.xz — make sure xz is available.
+      - name: Ensure xz (macOS)
+        if: startsWith(matrix.platform, 'macos')
+        run: which xz || brew install xz
 
       - name: Setup Node
         uses: actions/setup-node@v4
@@ -66,33 +74,30 @@ jobs:
       - name: Install frontend deps
         run: npm ci
 
-      # The yt-dlp onedir zip is fetched automatically by the beforeBuildCommand
-      # using TAURI_ENV_TARGET_TRIPLE (set here from the matrix target) and bundled
-      # as a compressed app resource; the app extracts it once on first launch.
-      - name: Build the app
+      # beforeBuildCommand runs scripts/fetch-ytdlp.mjs, which builds the engine
+      # for TAURI_ENV_TARGET_TRIPLE: a tar.xz on macOS/Linux, the onedir zip on
+      # Windows (no xz needed there). It's bundled and extracted once at runtime.
+      - name: Build & release
         uses: tauri-apps/tauri-action@v0
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           TAURI_ENV_TARGET_TRIPLE: ${{ matrix.target }}
         with:
           args: ${{ matrix.args }}
-          # On a tag push, create/append a GitHub Release with the installers.
           tagName: ${{ startsWith(github.ref, 'refs/tags/') && github.ref_name || '' }}
           releaseName: ${{ startsWith(github.ref, 'refs/tags/') && format('YT Grab {0}', github.ref_name) || '' }}
-          releaseDraft: true
+          releaseBody: "Desktop builds — `.dmg` (macOS), `.deb` (Linux), `.msi` (Windows)."
+          releaseDraft: false
           prerelease: false
 
+      # For branch/PR pushes (no tag), keep the installers as workflow artifacts.
       - name: Upload artifacts
         if: ${{ !startsWith(github.ref, 'refs/tags/') }}
         uses: actions/upload-artifact@v4
         with:
           name: yt-grab-${{ matrix.target }}
           path: |
-            src-tauri/target/${{ matrix.target }}/release/bundle/**/*.dmg
-            src-tauri/target/${{ matrix.target }}/release/bundle/**/*.app
-            src-tauri/target/${{ matrix.target }}/release/bundle/**/*.AppImage
-            src-tauri/target/${{ matrix.target }}/release/bundle/**/*.deb
-            src-tauri/target/${{ matrix.target }}/release/bundle/**/*.rpm
-            src-tauri/target/${{ matrix.target }}/release/bundle/**/*.msi
-            src-tauri/target/${{ matrix.target }}/release/bundle/**/*.exe
+            src-tauri/target/**/release/bundle/**/*.dmg
+            src-tauri/target/**/release/bundle/**/*.deb
+            src-tauri/target/**/release/bundle/**/*.msi
           if-no-files-found: ignore

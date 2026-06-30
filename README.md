@@ -30,11 +30,12 @@ advanced-options panel, and a self-updating engine. Targets **macOS, Windows, an
 ## How it works
 
 - **Engine:** the app drives `yt-dlp` (current YouTube + hundreds of sites). The official
-  **onedir** distribution is downloaded at build time and repacked as a high-compression
-  **LZMA `tar.xz`** (`src-tauri/engine/ytdlp-engine.txz`, ~27 MB vs ~52 MB as a zip), bundled
-  as an app resource. On first launch it's **extracted once** into the app-data dir (guarded by
-  a `.complete` marker, re-extracted if deleted) and the launcher is run directly via
-  `tokio::process` — **~0.2 s startup** with no per-run unpacking. No Python at runtime.
+  **onedir** distribution is bundled as an app resource — repacked to a high-compression
+  **LZMA `tar.xz`** on **macOS/Linux** (~27 MB vs ~52 MB as a zip), and kept as the native
+  **`.zip`** on **Windows** (no `xz` needed there). On first launch it's **extracted once**
+  into the app-data dir (guarded by a `.complete` marker, re-extracted if deleted) and the
+  launcher is run directly via `tokio::process` — **~0.2 s startup** with no per-run unpacking.
+  No Python at runtime.
 - **Why onedir, not the single binary:** the single-file `yt-dlp` is a PyInstaller *onefile*
   that re-extracts its whole runtime to a temp dir on *every* run (~8 s). The onedir keeps its
   `_internal/` on disk, validated once by the OS, so subsequent runs are instant.
