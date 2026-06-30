@@ -53,7 +53,12 @@ async function resolveRelease() {
     release === "latest"
       ? "https://api.github.com/repos/yt-dlp/yt-dlp/releases/latest"
       : `https://api.github.com/repos/yt-dlp/yt-dlp/releases/tags/${release}`;
-  const res = await fetch(api, { headers: { "User-Agent": "yt-grab-build" } });
+  // Authenticate when a token is available (CI) — unauthenticated api.github.com
+  // is rate-limited and 403s when several matrix jobs hit it at once.
+  const headers = { "User-Agent": "yt-grab-build" };
+  const token = process.env.GITHUB_TOKEN || process.env.GH_TOKEN;
+  if (token) headers.Authorization = `Bearer ${token}`;
+  const res = await fetch(api, { headers });
   if (!res.ok) throw new Error(`GitHub API ${res.status}`);
   return (await res.json()).tag_name;
 }
